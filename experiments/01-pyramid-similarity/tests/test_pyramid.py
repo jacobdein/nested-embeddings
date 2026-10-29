@@ -57,3 +57,16 @@ def test_dequant_lut():
     assert lut[127] == pytest.approx((127 / 127.5) ** 2)
     assert lut[255] == pytest.approx(-((1 / 127.5) ** 2))  # int8 -1
     assert lut[0] == 0
+
+
+def test_top_cells_thinning_and_exclusion():
+    from pyramid_sim.scoring import top_cells
+
+    s = np.zeros((128, 128), np.float32)
+    s[20, 20], s[21, 21], s[100, 100], s[60, 60] = 5, 4, 3, 2  # (20,20),(21,21) share a cell
+    r, c = top_cells(s, 3, exclude_cell=None)
+    assert list(zip(r, c)) == [(20, 20), (100, 100), (60, 60)]
+    r, c = top_cells(s, 2, exclude_cell=(101, 101))
+    assert list(zip(r, c)) == [(20, 20), (60, 60)]
+    r, c = top_cells(s, 1, exclude_cell=(30, 30), exclude_radius=20)
+    assert (r[0], c[0]) == (100, 100)

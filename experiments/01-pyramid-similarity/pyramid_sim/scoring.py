@@ -52,13 +52,18 @@ class Shares:
         return np.isin(self.wc, classes)
 
 
-def top_cells(score: np.ndarray, k: int, exclude_cell: tuple[int, int] | None, seed: int = 0):
+def top_cells(
+    score: np.ndarray, k: int, exclude_cell: tuple[int, int] | None, seed: int = 0,
+    exclude_radius: int = 0,
+):
     """Top-k hits thinned to one per level-5 cell.
 
     Each cell is represented by its best-scoring pixel; cells are ranked by that score.
     Ties (within a cell, and between cells for coarse single-level methods whose
     score is constant over many cells) are broken at random with a fixed seed, so a
-    method gets no credit for an arbitrary pixel order. Returns (rows, cols) of hits.
+    method gets no credit for an arbitrary pixel order. With `exclude_radius` > 0, every
+    cell whose centre lies within that many pixels (Chebyshev) of the query is dropped
+    too. Returns (rows, cols) of hits.
     """
     h, w = score.shape
     f = 2 ** (THIN_LEVEL - 1)
@@ -73,6 +78,10 @@ def top_cells(score: np.ndarray, k: int, exclude_cell: tuple[int, int] | None, s
     pr, pc = np.divmod(pick, w)
     if exclude_cell is not None:
         keep = ~((pr // f == exclude_cell[0] // f) & (pc // f == exclude_cell[1] // f))
+        if exclude_radius:
+            cr, cc = (pr // f) * f + f / 2, (pc // f) * f + f / 2
+            near = np.maximum(np.abs(cr - exclude_cell[0]), np.abs(cc - exclude_cell[1]))
+            keep &= near > exclude_radius
         pr, pc = pr[keep], pc[keep]
     return pr[:k], pc[:k]
 
